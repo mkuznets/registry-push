@@ -6,7 +6,7 @@
 - Key improvements: direct Docker daemon access (no `docker save`), parallel gzip via pgzip, configurable chunking, multi-source support (daemon, remote registry, OCI layout), progress bars
 
 ## Context (from brainstorm)
-- Files/components: new `push-go/` directory (flat structure)
+- Files/components: flat structure in repo root, module `github.com/mkuznets/registry-push`, binary name `registry-push`
 - Dependencies: `go-containerregistry`, `go-flags`, `klauspost/pgzip`, `vbauerber/mpb`
 - Registry protocol: OCI Distribution Spec with chunked uploads via `PATCH` + `Content-Range`
 - Existing push tool: `push/index.ts` (410 lines) — reference implementation for upload protocol
@@ -36,20 +36,57 @@
 ### Task 1: Project scaffold and CLI parsing
 
 **Files:**
-- Create: `push-go/main.go`
-- Create: `push-go/go.mod`
+- Create: `main.go`
+- Create: `go.mod`
+- Create: `LICENSE`
 
-- [ ] Initialize Go module (`go mod init`) in `push-go/`
+- [ ] Add MIT license file
+- [ ] Initialize Go module (`go mod init github.com/mkuznets/registry-push`)
 - [ ] Define `Options` struct with `go-flags` tags: `--chunk-size`, `--concurrency`, `--gzip-level`, `--recompress`, `--username`/`REGISTRY_USERNAME`, `--password`/`REGISTRY_PASSWORD`, `--insecure` (plain HTTP), positional `source` and `destination` args
 - [ ] Parse destination into host + repository path + tag (handle `host/path:tag` format)
 - [ ] Add basic `main()` that parses args, validates, and prints parsed config (stub for now)
 - [ ] Run `go mod tidy`, verify it builds
 
-### Task 2: Source image resolution
+### Task 2: Makefile and .gitignore
 
 **Files:**
-- Create: `push-go/source.go`
-- Create: `push-go/source_test.go`
+- Create: `Makefile`
+- Create/update: `.gitignore`
+
+- [ ] Add `.gitignore` with `bin/` directory and other Go artifacts
+- [ ] Create `Makefile` with targets:
+  - `build`: compile to `./bin/registry-push`
+  - `test`: run `go test ./...`
+  - `lint`: run `golangci-lint run`
+  - `fmt`: run `gofumpt -w .` and `goimports -w .`
+  - `tidy`: run `go mod tidy`
+  - `all`: run `fmt`, `lint`, `test`, `build` in sequence
+
+### Task 3: golangci-lint configuration
+
+**Files:**
+- Create: `.golangci.yml`
+
+- [ ] Create strict `.golangci.yml` config enabling linters beyond defaults: `govet`, `errcheck`, `staticcheck`, `unused`, `gosimple`, `ineffassign`, `typecheck`, `gocritic`, `gofumpt`, `goimports`, `misspell`, `prealloc`, `revive`, `unconvert`, `unparam`, `errname`
+- [ ] Tune settings: set `gofumpt` as formatter, configure `revive` with sensible rules, set appropriate line length
+- [ ] Run `make lint` — fix any issues in existing code
+- [ ] Run `make test` — must pass before next task
+
+### Task 4: GitHub Actions CI
+
+**Files:**
+- Create: `.github/workflows/ci.yml`
+
+- [ ] Create workflow triggered on pull requests (and pushes to `main`)
+- [ ] Job: `test` — set up Go, run `make test`
+- [ ] Job: `lint` — set up Go, install `golangci-lint`, run `make lint`
+- [ ] Use latest stable Go version, cache modules
+
+### Task 5: Source image resolution
+
+**Files:**
+- Create: `source.go`
+- Create: `source_test.go`
 
 - [ ] Implement `resolveSource(ref string) (v1.Image, error)` that dispatches on prefix:
   - `daemon://` prefix or bare name with no dots in first segment -> Docker daemon via `daemon.Image()`
@@ -59,11 +96,11 @@
 - [ ] Write tests for error cases (invalid references, missing prefix handling)
 - [ ] Run tests - must pass before next task
 
-### Task 3: Compression / passthrough layer wrapper
+### Task 6: Compression / passthrough layer wrapper
 
 **Files:**
-- Create: `push-go/compress.go`
-- Create: `push-go/compress_test.go`
+- Create: `compress.go`
+- Create: `compress_test.go`
 
 - [ ] Implement function that takes a `v1.Image` and returns a processed image:
   - If `--recompress` is false: return image as-is (layers are already compressed from source)
@@ -73,11 +110,11 @@
 - [ ] Write tests: recompression produces valid gzip at correct level
 - [ ] Run tests - must pass before next task
 
-### Task 4: Chunked upload protocol
+### Task 7: Chunked upload protocol
 
 **Files:**
-- Create: `push-go/upload.go`
-- Create: `push-go/upload_test.go`
+- Create: `upload.go`
+- Create: `upload_test.go`
 
 - [ ] Implement `pushLayer(ctx, client, baseURL, cred, digest, reader, totalSize, chunkSize, bar)`:
   - `HEAD` to check if blob exists (skip if 200)
@@ -91,11 +128,11 @@
 - [ ] Write tests for retry on 5xx, immediate fail on 4xx, skip on existing blob
 - [ ] Run tests - must pass before next task
 
-### Task 5: Push orchestration with progress bars
+### Task 8: Push orchestration with progress bars
 
 **Files:**
-- Modify: `push-go/main.go`
-- Modify: `push-go/upload.go`
+- Modify: `main.go`
+- Modify: `upload.go`
 
 - [ ] Wire everything together in `main()`: resolve source -> process layers -> push concurrently -> push manifest
 - [ ] Set up `mpb.Progress` container with per-layer bars showing: short digest, progress percentage, bytes transferred/total, speed
@@ -105,7 +142,7 @@
 - [ ] Test full push flow end-to-end with `httptest.Server` (at least one integration-style test)
 - [ ] Run tests - must pass before next task
 
-### Task 6: Verify acceptance criteria
+### Task 9: Verify acceptance criteria
 
 - [ ] Verify: source resolution works for daemon, remote, and OCI sources
 - [ ] Verify: passthrough mode skips compression, `--recompress` re-compresses at specified level
@@ -113,12 +150,27 @@
 - [ ] Verify: `--concurrency` controls parallelism
 - [ ] Verify: progress bars show per-layer progress with speed
 - [ ] Verify: retries work on transient failures
-- [ ] Run full test suite: `cd push-go && go test ./...`
+- [ ] Run full test suite: `go test ./...`
 
-### Task 7: README and documentation
+### Task 10: GoReleaser and release workflow
 
 **Files:**
-- Create: `push-go/README.md`
+- Create: `.goreleaser.yml`
+- Create: `.github/workflows/release.yml`
+
+- [ ] Create `.goreleaser.yml` config:
+  - Build `registry-push` binary for linux/darwin × amd64/arm64
+  - Produce tar.gz archives with binary, LICENSE, README
+  - Generate checksums file
+- [ ] Create `.github/workflows/release.yml`:
+  - Trigger on tag push (`v*`)
+  - Use `goreleaser/goreleaser-action` to build and publish GitHub Release
+- [ ] Add `dist/` to `.gitignore`
+
+### Task 11: README and documentation
+
+**Files:**
+- Create: `README.md`
 
 - [ ] Write README explaining:
   - **Why this tool exists**: Workers have a max request body size, so `docker push` fails for large layers. This tool implements OCI chunked uploads to work around that limitation. Replaces the original TypeScript push tool with a faster, more reliable Go implementation
