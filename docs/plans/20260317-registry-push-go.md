@@ -40,12 +40,12 @@
 - Create: `go.mod`
 - Create: `LICENSE`
 
-- [ ] Add MIT license file
-- [ ] Initialize Go module (`go mod init github.com/mkuznets/registry-push`)
-- [ ] Define `Options` struct with `go-flags` tags: `--chunk-size`, `--concurrency`, `--gzip-level`, `--recompress`, `--username`/`REGISTRY_USERNAME`, `--password`/`REGISTRY_PASSWORD`, `--insecure` (plain HTTP), positional `source` and `destination` args
-- [ ] Parse destination into host + repository path + tag (handle `host/path:tag` format)
-- [ ] Add basic `main()` that parses args, validates, and prints parsed config (stub for now)
-- [ ] Run `go mod tidy`, verify it builds
+- [x] Add MIT license file
+- [x] Initialize Go module (`go mod init github.com/mkuznets/registry-push`)
+- [x] Define `Options` struct with `go-flags` tags: `--chunk-size`, `--concurrency`, `--gzip-level`, `--recompress`, `--username`/`REGISTRY_USERNAME`, `--password`/`REGISTRY_PASSWORD`, `--insecure` (plain HTTP), positional `source` and `destination` args
+- [x] Parse destination into host + repository path + tag (handle `host/path:tag` format)
+- [x] Add basic `main()` that parses args, validates, and prints parsed config (stub for now)
+- [x] Run `go mod tidy`, verify it builds
 
 ### Task 2: Makefile and .gitignore
 
