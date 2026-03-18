@@ -40,18 +40,16 @@ registry-push [OPTIONS] <source> <destination>
 
 ### Source formats
 
-The tool resolves images from three source types:
+Images are always resolved locally — either from the Docker daemon or an OCI layout directory on disk.
 
-| Input                          | Source                   |
-|--------------------------------|--------------------------|
-| `myimage:latest`               | Docker daemon            |
-| `daemon://myimage:v2`          | Docker daemon (explicit) |
-| `docker.io/library/nginx:1.27` | Remote registry          |
-| `ghcr.io/org/repo:tag`         | Remote registry          |
-| `oci:./my-layout`              | OCI layout directory     |
+| Input                          | Source               |
+|--------------------------------|----------------------|
+| `myimage:latest`               | Docker daemon        |
+| `docker.io/library/nginx:1.27` | Docker daemon        |
+| `ghcr.io/org/repo:tag`         | Docker daemon        |
+| `oci:./my-layout`              | OCI layout directory |
 
-The heuristic: if the first path segment contains a dot or colon, it's treated as a remote registry reference. The
-`daemon://` and `oci:` prefixes force a specific source type.
+The `oci:` prefix selects an OCI layout directory. Everything else is resolved from the local Docker daemon.
 
 ### Destination format
 
@@ -67,12 +65,6 @@ Push from local Docker daemon:
 
 ```
 registry-push --username user --password pass myimage:latest registry.example.com/repo/myimage:v1
-```
-
-Push from a remote registry:
-
-```
-registry-push --username user --password pass docker.io/library/alpine:3.19 registry.example.com/repo/alpine:3.19
 ```
 
 Push from an OCI layout directory:

@@ -11,18 +11,6 @@ import (
 )
 
 func TestClassifySource(t *testing.T) {
-	t.Run("daemon prefix", func(t *testing.T) {
-		srcType, ref := ClassifySource("daemon://myimage:v2")
-		assert.Equal(t, SourceDaemon, srcType)
-		assert.Equal(t, "myimage:v2", ref)
-	})
-
-	t.Run("daemon prefix bare name", func(t *testing.T) {
-		srcType, ref := ClassifySource("daemon://ubuntu")
-		assert.Equal(t, SourceDaemon, srcType)
-		assert.Equal(t, "ubuntu", ref)
-	})
-
 	t.Run("oci prefix with relative path", func(t *testing.T) {
 		srcType, ref := ClassifySource("oci:./my-layout")
 		assert.Equal(t, SourceOCI, srcType)
@@ -35,75 +23,46 @@ func TestClassifySource(t *testing.T) {
 		assert.Equal(t, "/tmp/layout", ref)
 	})
 
-	t.Run("bare name with tag is daemon", func(t *testing.T) {
+	t.Run("bare name with tag", func(t *testing.T) {
 		srcType, ref := ClassifySource("myimage:latest")
 		assert.Equal(t, SourceDaemon, srcType)
 		assert.Equal(t, "myimage:latest", ref)
 	})
 
-	t.Run("bare name without tag is daemon", func(t *testing.T) {
+	t.Run("bare name without tag", func(t *testing.T) {
 		srcType, ref := ClassifySource("myimage")
 		assert.Equal(t, SourceDaemon, srcType)
 		assert.Equal(t, "myimage", ref)
 	})
 
-	t.Run("org/repo without dots is daemon", func(t *testing.T) {
+	t.Run("org/repo", func(t *testing.T) {
 		srcType, ref := ClassifySource("org/repo")
 		assert.Equal(t, SourceDaemon, srcType)
 		assert.Equal(t, "org/repo", ref)
 	})
 
-	t.Run("registry with dots is remote", func(t *testing.T) {
+	t.Run("registry-style ref is still daemon", func(t *testing.T) {
 		srcType, ref := ClassifySource("docker.io/library/nginx:1.27")
-		assert.Equal(t, SourceRemote, srcType)
+		assert.Equal(t, SourceDaemon, srcType)
 		assert.Equal(t, "docker.io/library/nginx:1.27", ref)
 	})
 
-	t.Run("ghcr.io reference is remote", func(t *testing.T) {
+	t.Run("ghcr.io ref is still daemon", func(t *testing.T) {
 		srcType, ref := ClassifySource("ghcr.io/org/repo:tag")
-		assert.Equal(t, SourceRemote, srcType)
+		assert.Equal(t, SourceDaemon, srcType)
 		assert.Equal(t, "ghcr.io/org/repo:tag", ref)
 	})
 
-	t.Run("localhost without port is remote", func(t *testing.T) {
+	t.Run("localhost ref is still daemon", func(t *testing.T) {
 		srcType, ref := ClassifySource("localhost/myapp:v1")
-		assert.Equal(t, SourceRemote, srcType)
+		assert.Equal(t, SourceDaemon, srcType)
 		assert.Equal(t, "localhost/myapp:v1", ref)
 	})
 
-	t.Run("localhost with port is remote", func(t *testing.T) {
+	t.Run("localhost with port is still daemon", func(t *testing.T) {
 		srcType, ref := ClassifySource("localhost:5000/myapp:v1")
-		assert.Equal(t, SourceRemote, srcType)
+		assert.Equal(t, SourceDaemon, srcType)
 		assert.Equal(t, "localhost:5000/myapp:v1", ref)
-	})
-
-	t.Run("registry.example.com is remote", func(t *testing.T) {
-		srcType, ref := ClassifySource("registry.example.com/myapp:v1")
-		assert.Equal(t, SourceRemote, srcType)
-		assert.Equal(t, "registry.example.com/myapp:v1", ref)
-	})
-}
-
-func TestParseRemoteReference(t *testing.T) {
-	t.Run("localhost without port resolves to localhost registry", func(t *testing.T) {
-		ref, err := parseRemoteReference("localhost/myapp:v1")
-		require.NoError(t, err)
-		assert.Equal(t, "localhost", ref.Context().RegistryStr())
-		assert.Equal(t, "myapp", ref.Context().RepositoryStr())
-	})
-
-	t.Run("localhost with port resolves to localhost registry", func(t *testing.T) {
-		ref, err := parseRemoteReference("localhost:5000/myapp:v1")
-		require.NoError(t, err)
-		assert.Equal(t, "localhost:5000", ref.Context().RegistryStr())
-		assert.Equal(t, "myapp", ref.Context().RepositoryStr())
-	})
-
-	t.Run("registry with dots resolves correctly", func(t *testing.T) {
-		ref, err := parseRemoteReference("ghcr.io/org/repo:tag")
-		require.NoError(t, err)
-		assert.Equal(t, "ghcr.io", ref.Context().RegistryStr())
-		assert.Equal(t, "org/repo", ref.Context().RepositoryStr())
 	})
 }
 
@@ -150,7 +109,7 @@ func TestResolveSource_OCILayoutEmpty(t *testing.T) {
 }
 
 func TestResolveSource_InvalidDaemonRef(t *testing.T) {
-	_, err := ResolveSource("daemon://")
+	_, err := ResolveSource("")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "parsing daemon reference")
 }
