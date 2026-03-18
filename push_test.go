@@ -28,16 +28,16 @@ func TestBuildManifest(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "application/vnd.oci.image.manifest.v1+json", mediaType)
 
-		var m ociManifest
+		var m v1.Manifest
 		require.NoError(t, json.Unmarshal(manifestBytes, &m))
 
-		assert.Equal(t, 2, m.SchemaVersion)
-		assert.Equal(t, "application/vnd.oci.image.manifest.v1+json", m.MediaType)
-		assert.Equal(t, "application/vnd.oci.image.config.v1+json", m.Config.MediaType)
-		assert.NotEmpty(t, m.Config.Digest)
+		assert.Equal(t, int64(2), m.SchemaVersion)
+		assert.Equal(t, types.OCIManifestSchema1, m.MediaType)
+		assert.Equal(t, types.OCIConfigJSON, m.Config.MediaType)
+		assert.NotEqual(t, v1.Hash{}, m.Config.Digest)
 		assert.Greater(t, m.Config.Size, int64(0))
 		assert.Len(t, m.Layers, 1)
-		assert.NotEmpty(t, m.Layers[0].Digest)
+		assert.NotEqual(t, v1.Hash{}, m.Layers[0].Digest)
 		assert.Greater(t, m.Layers[0].Size, int64(0))
 	})
 }
@@ -80,7 +80,7 @@ func TestPushImageEndToEnd(t *testing.T) {
 
 		configRaw, err := img.RawConfigFile()
 		require.NoError(t, err)
-		configDigest, _, err := v1.SHA256(strings.NewReader(string(configRaw)))
+		configDigest, _, err := v1.SHA256(bytes.NewReader(configRaw))
 		require.NoError(t, err)
 
 		var mu sync.Mutex
@@ -164,12 +164,12 @@ func TestPushImageEndToEnd(t *testing.T) {
 		assert.Equal(t, "/v2/test/repo/manifests/v1.0", receivedManifestPath)
 		assert.NotEmpty(t, receivedManifest)
 
-		var m ociManifest
+		var m v1.Manifest
 		require.NoError(t, json.Unmarshal(receivedManifest, &m))
-		assert.Equal(t, 2, m.SchemaVersion)
-		assert.Equal(t, configDigest.String(), m.Config.Digest)
+		assert.Equal(t, int64(2), m.SchemaVersion)
+		assert.Equal(t, configDigest, m.Config.Digest)
 		assert.Len(t, m.Layers, 1)
-		assert.Equal(t, layerDigest.String(), m.Layers[0].Digest)
+		assert.Equal(t, layerDigest, m.Layers[0].Digest)
 
 		blobCount := 0
 		for _, buf := range receivedBlobs {

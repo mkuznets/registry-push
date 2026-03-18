@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -140,7 +141,6 @@ func pushImageWithSource(ctx context.Context, opts *Options, dest Destination, p
 	g.SetLimit(opts.Concurrency)
 
 	for _, layer := range layers {
-		layer := layer
 		g.Go(func() error {
 			return pushSingleLayer(gctx, client, baseURL, cred, layer, int64(opts.ChunkSize), progress)
 		})
@@ -214,7 +214,7 @@ func pushConfigBlob(ctx context.Context, client *http.Client, baseURL string, cr
 		return fmt.Errorf("getting config: %w", err)
 	}
 
-	configDigest, configSize, err := v1.SHA256(strings.NewReader(string(configRaw)))
+	configDigest, configSize, err := v1.SHA256(bytes.NewReader(configRaw))
 	if err != nil {
 		return fmt.Errorf("computing config digest: %w", err)
 	}
@@ -229,83 +229,32 @@ func pushConfigBlob(ctx context.Context, client *http.Client, baseURL string, cr
 		),
 	)
 
-	return pushLayer(ctx, client, baseURL, cred, configDigest, strings.NewReader(string(configRaw)), configSize, 0, bar)
-}
-
-type ociManifest struct {
-	SchemaVersion int             `json:"schemaVersion"`
-	MediaType     string          `json:"mediaType"`
-	Config        ociDescriptor   `json:"config"`
-	Layers        []ociDescriptor `json:"layers"`
-}
-
-type ociDescriptor struct {
-	MediaType string `json:"mediaType"`
-	Digest    string `json:"digest"`
-	Size      int64  `json:"size"`
+	return pushLayer(ctx, client, baseURL, cred, configDigest, bytes.NewReader(configRaw), configSize, 0, bar)
 }
 
 func buildManifest(img v1.Image) (data []byte, mediaType string, _ error) {
-	configRaw, err := img.RawConfigFile()
+	m, err := img.Manifest()
 	if err != nil {
-		return nil, "", fmt.Errorf("getting config: %w", err)
+		return nil, "", fmt.Errorf("getting manifest: %w", err)
 	}
 
-	configDigest, configSize, err := v1.SHA256(strings.NewReader(string(configRaw)))
+	mc := *m
+	mc.MediaType = types.OCIManifestSchema1
+	mc.Config.MediaType = types.OCIConfigJSON
+
+	data, err = json.Marshal(mc)
 	if err != nil {
-		return nil, "", fmt.Errorf("computing config digest: %w", err)
+		return nil, "", fmt.Errorf("marshaling manifest: %w", err)
 	}
 
-	layers, err := img.Layers()
-	if err != nil {
-		return nil, "", fmt.Errorf("getting layers: %w", err)
-	}
-
-	layerDescs := make([]ociDescriptor, 0, len(layers))
-	for _, layer := range layers {
-		digest, dErr := layer.Digest()
-		if dErr != nil {
-			return nil, "", fmt.Errorf("getting layer digest: %w", dErr)
-		}
-		size, sErr := layer.Size()
-		if sErr != nil {
-			return nil, "", fmt.Errorf("getting layer size: %w", sErr)
-		}
-		mt, mtErr := layer.MediaType()
-		if mtErr != nil {
-			return nil, "", fmt.Errorf("getting layer media type: %w", mtErr)
-		}
-		layerDescs = append(layerDescs, ociDescriptor{
-			MediaType: string(mt),
-			Digest:    digest.String(),
-			Size:      size,
-		})
-	}
-
-	mediaType = string(types.OCIManifestSchema1)
-	m := ociManifest{
-		SchemaVersion: 2,
-		MediaType:     mediaType,
-		Config: ociDescriptor{
-			MediaType: string(types.OCIConfigJSON),
-			Digest:    configDigest.String(),
-			Size:      configSize,
-		},
-		Layers: layerDescs,
-	}
-
-	var marshalErr error
-	data, marshalErr = json.Marshal(m)
-	if marshalErr != nil {
-		return nil, "", fmt.Errorf("marshaling manifest: %w", marshalErr)
-	}
-
-	return data, mediaType, nil
+	return data, string(types.OCIManifestSchema1), nil
 }
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		if _, ok := err.(*goflags.Error); !ok {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		}
 		os.Exit(1)
 	}
 }
