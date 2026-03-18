@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -141,7 +142,15 @@ func pushImage(ctx context.Context, opts *Options, dest Destination, proto strin
 func pushImageWithSource(ctx context.Context, opts *Options, dest Destination, proto string, img v1.Image) error {
 	baseURL := fmt.Sprintf("%s://%s/v2/%s", proto, dest.Host, dest.Repository)
 	cred := Credentials{Username: opts.Username, Password: opts.Password}
-	client := &http.Client{Timeout: 5 * time.Minute}
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout: 30 * time.Second,
+			}).DialContext,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 5 * time.Minute,
+		},
+	}
 
 	layers, err := img.Layers()
 	if err != nil {
