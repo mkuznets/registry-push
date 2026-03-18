@@ -53,8 +53,8 @@
 - Create: `Makefile`
 - Create/update: `.gitignore`
 
-- [ ] Add `.gitignore` with `bin/` directory and other Go artifacts
-- [ ] Create `Makefile` with targets:
+- [x] Add `.gitignore` with `bin/` directory and other Go artifacts
+- [x] Create `Makefile` with targets:
   - `build`: compile to `./bin/registry-push`
   - `test`: run `go test ./...`
   - `lint`: run `golangci-lint run`
