@@ -77,10 +77,10 @@
 **Files:**
 - Create: `.github/workflows/ci.yml`
 
-- [ ] Create workflow triggered on pull requests (and pushes to `main`)
-- [ ] Job: `test` — set up Go, run `make test`
-- [ ] Job: `lint` — set up Go, install `golangci-lint`, run `make lint`
-- [ ] Use latest stable Go version, cache modules
+- [x] Create workflow triggered on pull requests (and pushes to `main`)
+- [x] Job: `test` — set up Go, run `make test`
+- [x] Job: `lint` — set up Go, install `golangci-lint`, run `make lint`
+- [x] Use latest stable Go version, cache modules
 
 ### Task 5: Source image resolution
 
