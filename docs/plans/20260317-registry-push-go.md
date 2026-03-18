@@ -67,10 +67,10 @@
 **Files:**
 - Create: `.golangci.yml`
 
-- [ ] Create strict `.golangci.yml` config enabling linters beyond defaults: `govet`, `errcheck`, `staticcheck`, `unused`, `gosimple`, `ineffassign`, `typecheck`, `gocritic`, `gofumpt`, `goimports`, `misspell`, `prealloc`, `revive`, `unconvert`, `unparam`, `errname`
-- [ ] Tune settings: set `gofumpt` as formatter, configure `revive` with sensible rules, set appropriate line length
-- [ ] Run `make lint` — fix any issues in existing code
-- [ ] Run `make test` — must pass before next task
+- [x] Create strict `.golangci.yml` config enabling linters beyond defaults: `govet`, `errcheck`, `staticcheck`, `unused`, `gosimple`, `ineffassign`, `typecheck`, `gocritic`, `gofumpt`, `goimports`, `misspell`, `prealloc`, `revive`, `unconvert`, `unparam`, `errname`
+- [x] Tune settings: set `gofumpt` as formatter, configure `revive` with sensible rules, set appropriate line length
+- [x] Run `make lint` — fix any issues in existing code
+- [x] Run `make test` — must pass before next task
 
 ### Task 4: GitHub Actions CI
 
