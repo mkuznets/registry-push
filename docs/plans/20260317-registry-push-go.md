@@ -144,13 +144,13 @@
 
 ### Task 9: Verify acceptance criteria
 
-- [ ] Verify: source resolution works for daemon, remote, and OCI sources
-- [ ] Verify: passthrough mode skips compression, `--recompress` re-compresses at specified level
-- [ ] Verify: `--chunk-size` correctly caps chunk size
-- [ ] Verify: `--concurrency` controls parallelism
-- [ ] Verify: progress bars show per-layer progress with speed
-- [ ] Verify: retries work on transient failures
-- [ ] Run full test suite: `go test ./...`
+- [x] Verify: source resolution works for daemon, remote, and OCI sources
+- [x] Verify: passthrough mode skips compression, `--recompress` re-compresses at specified level
+- [x] Verify: `--chunk-size` correctly caps chunk size
+- [x] Verify: `--concurrency` controls parallelism
+- [x] Verify: progress bars show per-layer progress with speed
+- [x] Verify: retries work on transient failures
+- [x] Run full test suite: `go test ./...`
 
 ### Task 10: GoReleaser and release workflow
 
