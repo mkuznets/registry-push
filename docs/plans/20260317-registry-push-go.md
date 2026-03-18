@@ -158,14 +158,14 @@
 - Create: `.goreleaser.yml`
 - Create: `.github/workflows/release.yml`
 
-- [ ] Create `.goreleaser.yml` config:
+- [x] Create `.goreleaser.yml` config:
   - Build `registry-push` binary for linux/darwin × amd64/arm64
   - Produce tar.gz archives with binary, LICENSE, README
   - Generate checksums file
-- [ ] Create `.github/workflows/release.yml`:
+- [x] Create `.github/workflows/release.yml`:
   - Trigger on tag push (`v*`)
   - Use `goreleaser/goreleaser-action` to build and publish GitHub Release
-- [ ] Add `dist/` to `.gitignore`
+- [x] Add `dist/` to `.gitignore`
 
 ### Task 11: README and documentation
 

@@ -1,0 +1,22 @@
+version: 2
+
+builds:
+  - binary: registry-push
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - format: tar.gz
+    files:
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt

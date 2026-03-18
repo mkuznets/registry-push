@@ -1,4 +1,5 @@
 bin/
+dist/
 registry-push
 
 # ralphex progress logs
