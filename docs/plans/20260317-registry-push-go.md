@@ -88,13 +88,13 @@
 - Create: `source.go`
 - Create: `source_test.go`
 
-- [ ] Implement `resolveSource(ref string) (v1.Image, error)` that dispatches on prefix:
+- [x] Implement `resolveSource(ref string) (v1.Image, error)` that dispatches on prefix:
   - `daemon://` prefix or bare name with no dots in first segment -> Docker daemon via `daemon.Image()`
   - `oci:` prefix -> OCI layout via `layout.Image()`
   - Otherwise (contains dots, looks like a registry reference) -> `remote.Image()`
-- [ ] Write tests for prefix detection and dispatch logic (mock or use `crane` helpers)
-- [ ] Write tests for error cases (invalid references, missing prefix handling)
-- [ ] Run tests - must pass before next task
+- [x] Write tests for prefix detection and dispatch logic (mock or use `crane` helpers)
+- [x] Write tests for error cases (invalid references, missing prefix handling)
+- [x] Run tests - must pass before next task
 
 ### Task 6: Compression / passthrough layer wrapper
 
