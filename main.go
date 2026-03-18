@@ -249,6 +249,8 @@ func buildManifest(img v1.Image) (data []byte, mediaType string, _ error) {
 	mc.MediaType = types.OCIManifestSchema1
 	mc.Config.MediaType = types.OCIConfigJSON
 
+	mc.Layers = make([]v1.Descriptor, len(m.Layers))
+	copy(mc.Layers, m.Layers)
 	for i := range mc.Layers {
 		mc.Layers[i].MediaType = dockerToOCIMediaType(mc.Layers[i].MediaType)
 	}
