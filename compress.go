@@ -11,9 +11,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/klauspost/pgzip"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 )
 
-func ProcessImage(img v1.Image, gzipLevel int) (v1.Image, error) {
+func ProcessImage(img v1.Image, gzipLevel int, progress *mpb.Progress) (v1.Image, error) {
 	fmt.Println("Exporting image layers...")
 	layers, err := img.Layers()
 	if err != nil {
@@ -23,7 +25,7 @@ func ProcessImage(img v1.Image, gzipLevel int) (v1.Image, error) {
 	fmt.Printf("Compressing %d layers (gzip level %d)\n", len(layers), gzipLevel)
 
 	addenda := make([]mutate.Addendum, 0, len(layers))
-	for i, layer := range layers {
+	for _, layer := range layers {
 		diffID, err := layer.DiffID()
 		if err != nil {
 			return nil, fmt.Errorf("getting layer diff id: %w", err)
@@ -39,14 +41,10 @@ func ProcessImage(img v1.Image, gzipLevel int) (v1.Image, error) {
 		}
 
 		rl := &recompressedLayer{original: layer, gzipLevel: gzipLevel, label: shortID}
-		// Eagerly compress so we can show progress per layer.
-		fmt.Printf("  [%d/%d] %s: compressing...", i+1, len(layers), shortID)
-		rl.init()
+		rl.compress(progress)
 		if rl.err != nil {
-			fmt.Println(" error")
 			return nil, fmt.Errorf("compressing layer %s: %w", shortID, rl.err)
 		}
-		fmt.Printf(" %s\n", formatBytes(rl.size))
 
 		addenda = append(addenda, mutate.Addendum{
 			Layer:     rl,
@@ -97,7 +95,7 @@ type recompressedLayer struct {
 	err  error
 }
 
-func (l *recompressedLayer) init() {
+func (l *recompressedLayer) compress(progress *mpb.Progress) {
 	l.once.Do(func() {
 		rc, err := l.original.Uncompressed()
 		if err != nil {
@@ -105,6 +103,22 @@ func (l *recompressedLayer) init() {
 			return
 		}
 		defer func() { _ = rc.Close() }()
+
+		var bar *mpb.Bar
+		if progress != nil {
+			// The uncompressed size is not available from v1.Layer,
+			// so we start with total=0 and set the final total after
+			// all bytes have been read.
+			bar = progress.AddBar(0,
+				mpb.PrependDecorators(
+					decor.Name(l.label+" "),
+					decor.CurrentKibiByte("% .2f"),
+				),
+				mpb.AppendDecorators(
+					decor.EwmaSpeed(decor.SizeB1024(0), "% .2f", 30),
+				),
+			)
+		}
 
 		f, err := os.CreateTemp("", "layer-*.gz")
 		if err != nil {
@@ -120,9 +134,19 @@ func (l *recompressedLayer) init() {
 			l.err = fmt.Errorf("creating pgzip writer: %w", err)
 			return
 		}
-		if _, err := io.Copy(w, rc); err != nil {
+
+		var src io.Reader = rc
+		if bar != nil {
+			src = bar.ProxyReader(rc)
+		}
+
+		n, copyErr := io.Copy(w, src)
+		if bar != nil {
+			bar.SetTotal(n, true)
+		}
+		if copyErr != nil {
 			_ = f.Close()
-			l.err = fmt.Errorf("compressing layer: %w", err)
+			l.err = fmt.Errorf("compressing layer: %w", copyErr)
 			return
 		}
 		if err := w.Close(); err != nil {
@@ -161,7 +185,7 @@ func (l *recompressedLayer) Close() error {
 }
 
 func (l *recompressedLayer) Digest() (v1.Hash, error) {
-	l.init()
+	l.compress(nil)
 	return l.hash, l.err
 }
 
@@ -170,7 +194,7 @@ func (l *recompressedLayer) DiffID() (v1.Hash, error) {
 }
 
 func (l *recompressedLayer) Compressed() (io.ReadCloser, error) {
-	l.init()
+	l.compress(nil)
 	if l.err != nil {
 		return nil, l.err
 	}
@@ -185,7 +209,7 @@ func (l *recompressedLayer) Uncompressed() (io.ReadCloser, error) {
 }
 
 func (l *recompressedLayer) Size() (int64, error) {
-	l.init()
+	l.compress(nil)
 	if l.err != nil {
 		return 0, l.err
 	}

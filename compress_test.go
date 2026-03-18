@@ -15,7 +15,7 @@ func TestProcessImage_ProducesValidGzip(t *testing.T) {
 	img, err := random.Image(1024, 2)
 	require.NoError(t, err)
 
-	result, err := ProcessImage(img, 6)
+	result, err := ProcessImage(img, 6, nil)
 	require.NoError(t, err)
 
 	resultLayers, err := result.Layers()
@@ -63,7 +63,7 @@ func TestProcessImage_PreservesConfig(t *testing.T) {
 	img, err := random.Image(1024, 2)
 	require.NoError(t, err)
 
-	result, err := ProcessImage(img, 9)
+	result, err := ProcessImage(img, 9, nil)
 	require.NoError(t, err)
 
 	origCfg, err := img.ConfigFile()
@@ -83,7 +83,7 @@ func TestProcessImage_CompressedReadableMultipleTimes(t *testing.T) {
 	img, err := random.Image(1024, 1)
 	require.NoError(t, err)
 
-	result, err := ProcessImage(img, 5)
+	result, err := ProcessImage(img, 5, nil)
 	require.NoError(t, err)
 
 	layers, err := result.Layers()
