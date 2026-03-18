@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"regexp"
 	"strings"
+	"syscall"
+	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/types"
@@ -114,7 +117,10 @@ func run() error {
 		proto = "http"
 	}
 
-	return pushImage(context.Background(), &opts, dest, proto)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	return pushImage(ctx, &opts, dest, proto)
 }
 
 func pushImage(ctx context.Context, opts *Options, dest Destination, proto string) error {
@@ -135,7 +141,7 @@ func pushImage(ctx context.Context, opts *Options, dest Destination, proto strin
 func pushImageWithSource(ctx context.Context, opts *Options, dest Destination, proto string, img v1.Image) error {
 	baseURL := fmt.Sprintf("%s://%s/v2/%s", proto, dest.Host, dest.Repository)
 	cred := Credentials{Username: opts.Username, Password: opts.Password}
-	client := &http.Client{}
+	client := &http.Client{Timeout: 5 * time.Minute}
 
 	layers, err := img.Layers()
 	if err != nil {
