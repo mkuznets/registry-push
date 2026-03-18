@@ -33,11 +33,23 @@ func ClassifySource(ref string) (srcType SourceType, cleanRef string) {
 	}
 
 	firstSegment := ref[:idx]
-	if strings.Contains(firstSegment, ".") || strings.Contains(firstSegment, ":") {
+	if strings.Contains(firstSegment, ".") || strings.Contains(firstSegment, ":") || firstSegment == "localhost" {
 		return SourceRemote, ref
 	}
 
 	return SourceDaemon, ref
+}
+
+// parseRemoteReference parses a remote image reference string into a name.Reference.
+// Handles the special case where "localhost" without a port needs explicit registry
+// override, since go-containerregistry only recognizes first-segment registries
+// containing "." or ":".
+func parseRemoteReference(ref string) (name.Reference, error) {
+	if strings.HasPrefix(ref, "localhost/") {
+		ref = strings.TrimPrefix(ref, "localhost/")
+		return name.ParseReference(ref, name.WithDefaultRegistry("localhost"))
+	}
+	return name.ParseReference(ref)
 }
 
 func ResolveSource(ref string) (v1.Image, error) {
@@ -66,7 +78,7 @@ func ResolveSource(ref string) (v1.Image, error) {
 		return idx.Image(idxManifest.Manifests[0].Digest)
 
 	case SourceRemote:
-		remoteRef, err := name.ParseReference(cleanRef)
+		remoteRef, err := parseRemoteReference(cleanRef)
 		if err != nil {
 			return nil, fmt.Errorf("parsing remote reference %q: %w", cleanRef, err)
 		}

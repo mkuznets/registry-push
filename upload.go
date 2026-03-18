@@ -27,19 +27,6 @@ type Credentials struct {
 	Password string
 }
 
-type countingReader struct {
-	reader io.Reader
-	bar    *mpb.Bar
-}
-
-func (cr *countingReader) Read(p []byte) (int, error) {
-	n, err := cr.reader.Read(p)
-	if n > 0 && cr.bar != nil {
-		cr.bar.IncrBy(n)
-	}
-	return n, err
-}
-
 func pushLayer(
 	ctx context.Context,
 	client *http.Client,
@@ -67,10 +54,6 @@ func pushLayer(
 		return fmt.Errorf("initiating upload: %w", err)
 	}
 
-	if bar != nil {
-		content = &countingReader{reader: content, bar: bar}
-	}
-
 	var offset int64
 	for offset < totalSize {
 		remaining := totalSize - offset
@@ -86,9 +69,14 @@ func pushLayer(
 		}
 		chunk = chunk[:n]
 
+		chunkStart := time.Now()
 		location, err = uploadChunk(ctx, client, location, cred, chunk, offset)
 		if err != nil {
 			return fmt.Errorf("uploading chunk at offset %d: %w", offset, err)
+		}
+
+		if bar != nil {
+			bar.EwmaIncrBy(n, time.Since(chunkStart))
 		}
 
 		offset += int64(n)

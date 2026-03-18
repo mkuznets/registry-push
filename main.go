@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"regexp"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -159,11 +160,27 @@ func pushImageWithSource(ctx context.Context, opts *Options, dest Destination, p
 
 	progress := mpb.New(mpb.WithWidth(60))
 
+	var (
+		mu   sync.Mutex
+		seen = make(map[v1.Hash]bool)
+	)
+
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(opts.Concurrency)
 
 	for _, layer := range layers {
 		g.Go(func() error {
+			digest, err := layer.Digest()
+			if err != nil {
+				return fmt.Errorf("getting layer digest: %w", err)
+			}
+			mu.Lock()
+			if seen[digest] {
+				mu.Unlock()
+				return nil
+			}
+			seen[digest] = true
+			mu.Unlock()
 			return pushSingleLayer(gctx, client, baseURL, cred, layer, int64(opts.ChunkSize), progress)
 		})
 	}
@@ -173,7 +190,7 @@ func pushImageWithSource(ctx context.Context, opts *Options, dest Destination, p
 	})
 
 	if err := g.Wait(); err != nil {
-		progress.Wait()
+		progress.Shutdown()
 		return err
 	}
 

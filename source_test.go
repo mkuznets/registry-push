@@ -65,6 +65,12 @@ func TestClassifySource(t *testing.T) {
 		assert.Equal(t, "ghcr.io/org/repo:tag", ref)
 	})
 
+	t.Run("localhost without port is remote", func(t *testing.T) {
+		srcType, ref := ClassifySource("localhost/myapp:v1")
+		assert.Equal(t, SourceRemote, srcType)
+		assert.Equal(t, "localhost/myapp:v1", ref)
+	})
+
 	t.Run("localhost with port is remote", func(t *testing.T) {
 		srcType, ref := ClassifySource("localhost:5000/myapp:v1")
 		assert.Equal(t, SourceRemote, srcType)
@@ -75,6 +81,29 @@ func TestClassifySource(t *testing.T) {
 		srcType, ref := ClassifySource("registry.example.com/myapp:v1")
 		assert.Equal(t, SourceRemote, srcType)
 		assert.Equal(t, "registry.example.com/myapp:v1", ref)
+	})
+}
+
+func TestParseRemoteReference(t *testing.T) {
+	t.Run("localhost without port resolves to localhost registry", func(t *testing.T) {
+		ref, err := parseRemoteReference("localhost/myapp:v1")
+		require.NoError(t, err)
+		assert.Equal(t, "localhost", ref.Context().RegistryStr())
+		assert.Equal(t, "myapp", ref.Context().RepositoryStr())
+	})
+
+	t.Run("localhost with port resolves to localhost registry", func(t *testing.T) {
+		ref, err := parseRemoteReference("localhost:5000/myapp:v1")
+		require.NoError(t, err)
+		assert.Equal(t, "localhost:5000", ref.Context().RegistryStr())
+		assert.Equal(t, "myapp", ref.Context().RepositoryStr())
+	})
+
+	t.Run("registry with dots resolves correctly", func(t *testing.T) {
+		ref, err := parseRemoteReference("ghcr.io/org/repo:tag")
+		require.NoError(t, err)
+		assert.Equal(t, "ghcr.io", ref.Context().RegistryStr())
+		assert.Equal(t, "org/repo", ref.Context().RepositoryStr())
 	})
 }
 
