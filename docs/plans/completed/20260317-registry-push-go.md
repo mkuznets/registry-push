@@ -172,13 +172,13 @@
 **Files:**
 - Create: `README.md`
 
-- [ ] Write README explaining:
+- [x] Write README explaining:
   - **Why this tool exists**: Workers have a max request body size, so `docker push` fails for large layers. This tool implements OCI chunked uploads to work around that limitation. Replaces the original TypeScript push tool with a faster, more reliable Go implementation
   - **Installation**: `go build` or `go install`
   - **Usage examples**: daemon source, remote registry source, OCI layout source, with flags
   - **Configuration**: all flags and env vars
   - **How it works**: brief description of the chunked upload flow
-- [ ] Move this plan to `docs/plans/completed/`
+- [x] Move this plan to `docs/plans/completed/`
 
 ## Technical Details
 
