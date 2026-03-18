@@ -26,8 +26,7 @@ import (
 type Options struct {
 	ChunkSize   int    `long:"chunk-size" description:"Max chunk size in bytes (0 = use registry default)" default:"0"`
 	Concurrency int    `long:"concurrency" description:"Parallel layer operations" default:"5"`
-	GzipLevel   int    `long:"gzip-level" description:"Gzip level 1-9, used with --recompress" default:"9"`
-	Recompress  bool   `long:"recompress" description:"Re-compress layers with pgzip"`
+	GzipLevel int `long:"gzip-level" description:"Gzip compression level 1-9 for layers" default:"9"`
 	Insecure    bool   `long:"insecure" description:"Use plain HTTP"`
 	Username    string `long:"username" env:"REGISTRY_USERNAME" required:"true" description:"Registry username"`
 	Password    string `long:"password" env:"REGISTRY_PASSWORD" required:"true" description:"Registry password"`
@@ -127,12 +126,12 @@ func run() error {
 
 func pushImage(ctx context.Context, opts *Options, dest Destination, proto string) error {
 	fmt.Printf("Resolving source: %s\n", opts.Args.Source)
-	img, err := ResolveSource(opts.Args.Source)
+	img, err := ResolveSource(ctx, opts.Args.Source)
 	if err != nil {
 		return fmt.Errorf("resolving source: %w", err)
 	}
 
-	img, err = ProcessImage(img, opts.Recompress, opts.GzipLevel)
+	img, err = ProcessImage(img, opts.GzipLevel)
 	if err != nil {
 		return fmt.Errorf("processing image: %w", err)
 	}

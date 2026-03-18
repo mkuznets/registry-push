@@ -76,7 +76,7 @@ func TestResolveSource_OCILayout(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, lp.AppendImage(img))
 
-	resolved, err := ResolveSource("oci:" + dir)
+	resolved, err := ResolveSource(t.Context(), "oci:"+dir)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 
@@ -92,7 +92,7 @@ func TestResolveSource_OCILayout(t *testing.T) {
 }
 
 func TestResolveSource_OCILayoutNotFound(t *testing.T) {
-	_, err := ResolveSource("oci:/nonexistent/path")
+	_, err := ResolveSource(t.Context(), "oci:/nonexistent/path")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "reading OCI layout")
 }
@@ -103,13 +103,13 @@ func TestResolveSource_OCILayoutEmpty(t *testing.T) {
 	_, err := layout.Write(dir, empty.Index)
 	require.NoError(t, err)
 
-	_, err = ResolveSource("oci:" + dir)
+	_, err = ResolveSource(t.Context(), "oci:"+dir)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no manifests")
 }
 
 func TestResolveSource_InvalidDaemonRef(t *testing.T) {
-	_, err := ResolveSource("")
+	_, err := ResolveSource(t.Context(), "")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "parsing daemon reference")
 }

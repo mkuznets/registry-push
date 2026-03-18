@@ -11,53 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestProcessImage_PassthroughPreservesLayers(t *testing.T) {
-	img, err := random.Image(1024, 3)
-	require.NoError(t, err)
-
-	result, err := ProcessImage(img, false, 9)
-	require.NoError(t, err)
-
-	origLayers, err := img.Layers()
-	require.NoError(t, err)
-	resultLayers, err := result.Layers()
-	require.NoError(t, err)
-	require.Len(t, resultLayers, len(origLayers))
-
-	for i := range origLayers {
-		origDigest, err := origLayers[i].Digest()
-		require.NoError(t, err)
-		resultDigest, err := resultLayers[i].Digest()
-		require.NoError(t, err)
-		assert.Equal(t, origDigest, resultDigest)
-
-		origSize, err := origLayers[i].Size()
-		require.NoError(t, err)
-		resultSize, err := resultLayers[i].Size()
-		require.NoError(t, err)
-		assert.Equal(t, origSize, resultSize)
-
-		origRC, err := origLayers[i].Compressed()
-		require.NoError(t, err)
-		origData, err := io.ReadAll(origRC)
-		require.NoError(t, err)
-		require.NoError(t, origRC.Close())
-
-		resultRC, err := resultLayers[i].Compressed()
-		require.NoError(t, err)
-		resultData, err := io.ReadAll(resultRC)
-		require.NoError(t, err)
-		require.NoError(t, resultRC.Close())
-
-		assert.Equal(t, origData, resultData)
-	}
-}
-
-func TestProcessImage_RecompressProducesValidGzip(t *testing.T) {
+func TestProcessImage_ProducesValidGzip(t *testing.T) {
 	img, err := random.Image(1024, 2)
 	require.NoError(t, err)
 
-	result, err := ProcessImage(img, true, 6)
+	result, err := ProcessImage(img, 6)
 	require.NoError(t, err)
 
 	resultLayers, err := result.Layers()
@@ -101,11 +59,11 @@ func TestProcessImage_RecompressProducesValidGzip(t *testing.T) {
 	}
 }
 
-func TestProcessImage_RecompressPreservesConfig(t *testing.T) {
+func TestProcessImage_PreservesConfig(t *testing.T) {
 	img, err := random.Image(1024, 2)
 	require.NoError(t, err)
 
-	result, err := ProcessImage(img, true, 9)
+	result, err := ProcessImage(img, 9)
 	require.NoError(t, err)
 
 	origCfg, err := img.ConfigFile()
@@ -125,7 +83,7 @@ func TestProcessImage_CompressedReadableMultipleTimes(t *testing.T) {
 	img, err := random.Image(1024, 1)
 	require.NoError(t, err)
 
-	result, err := ProcessImage(img, true, 5)
+	result, err := ProcessImage(img, 5)
 	require.NoError(t, err)
 
 	layers, err := result.Layers()

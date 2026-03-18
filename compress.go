@@ -13,11 +13,7 @@ import (
 	"github.com/klauspost/pgzip"
 )
 
-func ProcessImage(img v1.Image, recompress bool, gzipLevel int) (v1.Image, error) {
-	if !recompress {
-		return img, nil
-	}
-
+func ProcessImage(img v1.Image, gzipLevel int) (v1.Image, error) {
 	layers, err := img.Layers()
 	if err != nil {
 		return nil, fmt.Errorf("getting image layers: %w", err)

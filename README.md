@@ -73,10 +73,16 @@ Push from an OCI layout directory:
 registry-push --username user --password pass oci:./my-layout registry.example.com/repo/myimage:v1
 ```
 
-Re-compress layers with parallel gzip:
+Custom gzip level (default is 9):
 
 ```
-registry-push --recompress --gzip-level 6 --username user --password pass myimage:latest registry.example.com/repo/myimage:v1
+registry-push --gzip-level 6 --username user --password pass myimage:latest registry.example.com/repo/myimage:v1
+```
+
+Skip recompression (use original layer compression):
+
+```
+registry-push --no-recompress --username user --password pass myimage:latest registry.example.com/repo/myimage:v1
 ```
 
 ## Configuration
@@ -87,8 +93,7 @@ registry-push --recompress --gzip-level 6 --username user --password pass myimag
 |-----------------|------------|-----------------------------------------------------------------------------------------------|
 | `--chunk-size`  | `0`        | Max chunk size in bytes. `0` means use the registry's advertised maximum (or 50 MB fallback). |
 | `--concurrency` | `5`        | Number of parallel layer uploads.                                                             |
-| `--gzip-level`  | `9`        | Gzip compression level (1-9). Only used with `--recompress`.                                  |
-| `--recompress`  | `false`    | Re-compress all layers using pgzip before uploading.                                          |
+| `--gzip-level`  | `9`        | Gzip compression level (1-9) for layers.                                                      |
 | `--insecure`    | `false`    | Use plain HTTP instead of HTTPS.                                                              |
 | `--username`    | (required) | Registry username.                                                                            |
 | `--password`    | (required) | Registry password.                                                                            |

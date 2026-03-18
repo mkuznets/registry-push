@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -24,7 +25,7 @@ func ClassifySource(ref string) (srcType SourceType, cleanRef string) {
 	return SourceDaemon, ref
 }
 
-func ResolveSource(ref string) (v1.Image, error) {
+func ResolveSource(ctx context.Context, ref string) (v1.Image, error) {
 	srcType, cleanRef := ClassifySource(ref)
 
 	switch srcType {
@@ -33,7 +34,10 @@ func ResolveSource(ref string) (v1.Image, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parsing daemon reference %q: %w", cleanRef, err)
 		}
-		return daemon.Image(daemonRef)
+		return daemon.Image(daemonRef,
+			daemon.WithContext(ctx),
+			daemon.WithFileBufferedOpener(),
+		)
 
 	case SourceOCI:
 		idx, err := layout.ImageIndexFromPath(cleanRef)
