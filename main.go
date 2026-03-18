@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -37,6 +38,8 @@ type Destination struct {
 	Tag        string
 }
 
+var tagPattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+
 func ParseDestination(raw string) (Destination, error) {
 	if raw == "" {
 		return Destination{}, fmt.Errorf("destination must not be empty")
@@ -50,6 +53,10 @@ func ParseDestination(raw string) (Destination, error) {
 			tag = candidate
 			ref = ref[:idx]
 		}
+	}
+
+	if !tagPattern.MatchString(tag) {
+		return Destination{}, fmt.Errorf("invalid tag %q: must match [a-zA-Z0-9_.-]+", tag)
 	}
 
 	parts := strings.SplitN(ref, "/", 2)
@@ -242,12 +249,29 @@ func buildManifest(img v1.Image) (data []byte, mediaType string, _ error) {
 	mc.MediaType = types.OCIManifestSchema1
 	mc.Config.MediaType = types.OCIConfigJSON
 
+	for i := range mc.Layers {
+		mc.Layers[i].MediaType = dockerToOCIMediaType(mc.Layers[i].MediaType)
+	}
+
 	data, err = json.Marshal(mc)
 	if err != nil {
 		return nil, "", fmt.Errorf("marshaling manifest: %w", err)
 	}
 
 	return data, string(types.OCIManifestSchema1), nil
+}
+
+var dockerToOCILayerTypes = map[types.MediaType]types.MediaType{
+	types.DockerLayer:             types.OCILayer,
+	types.DockerUncompressedLayer: types.OCIUncompressedLayer,
+	types.DockerForeignLayer:      types.OCIRestrictedLayer,
+}
+
+func dockerToOCIMediaType(mt types.MediaType) types.MediaType {
+	if oci, ok := dockerToOCILayerTypes[mt]; ok {
+		return oci
+	}
+	return mt
 }
 
 func main() {
