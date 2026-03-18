@@ -125,7 +125,14 @@ func run() error {
 }
 
 func pushImage(ctx context.Context, opts *Options, dest Destination, proto string) error {
-	fmt.Printf("Resolving source: %s\n", opts.Args.Source)
+	srcType, _ := ClassifySource(opts.Args.Source)
+	switch srcType {
+	case SourceDaemon:
+		fmt.Printf("Source: Docker daemon (%s)\n", opts.Args.Source)
+	case SourceOCI:
+		fmt.Printf("Source: OCI layout (%s)\n", opts.Args.Source)
+	}
+
 	img, err := ResolveSource(ctx, opts.Args.Source)
 	if err != nil {
 		return fmt.Errorf("resolving source: %w", err)
@@ -157,6 +164,7 @@ func pushImageWithSource(ctx context.Context, opts *Options, dest Destination, p
 		return fmt.Errorf("getting layers: %w", err)
 	}
 
+	fmt.Printf("Uploading %d layers to %s/%s\n", len(layers), dest.Host, dest.Repository)
 	progress := mpb.New(mpb.WithWidth(60))
 
 	var (
