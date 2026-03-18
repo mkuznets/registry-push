@@ -5,6 +5,7 @@ go 1.25.7
 require (
 	github.com/google/go-containerregistry v0.21.3
 	github.com/jessevdk/go-flags v1.6.1
+	github.com/klauspost/pgzip v1.2.6
 	github.com/stretchr/testify v1.11.1
 )
 

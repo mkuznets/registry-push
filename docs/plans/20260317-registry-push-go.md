@@ -102,13 +102,13 @@
 - Create: `compress.go`
 - Create: `compress_test.go`
 
-- [ ] Implement function that takes a `v1.Image` and returns a processed image:
+- [x] Implement function that takes a `v1.Image` and returns a processed image:
   - If `--recompress` is false: return image as-is (layers are already compressed from source)
   - If `--recompress` is true: wrap each layer to re-compress with `pgzip` at the specified `--gzip-level`
-- [ ] Use `mutate.AppendLayers` or custom `v1.Layer` implementation for re-compressed layers that computes digest/diffID/size correctly
-- [ ] Write tests: passthrough preserves original layer data
-- [ ] Write tests: recompression produces valid gzip at correct level
-- [ ] Run tests - must pass before next task
+- [x] Use `mutate.AppendLayers` or custom `v1.Layer` implementation for re-compressed layers that computes digest/diffID/size correctly
+- [x] Write tests: passthrough preserves original layer data
+- [x] Write tests: recompression produces valid gzip at correct level
+- [x] Run tests - must pass before next task
 
 ### Task 7: Chunked upload protocol
 
