@@ -116,17 +116,17 @@
 - Create: `upload.go`
 - Create: `upload_test.go`
 
-- [ ] Implement `pushLayer(ctx, client, baseURL, cred, digest, reader, totalSize, chunkSize, bar)`:
+- [x] Implement `pushLayer(ctx, client, baseURL, cred, digest, reader, totalSize, chunkSize, bar)`:
   - `HEAD` to check if blob exists (skip if 200)
   - `POST` to initiate upload, read `docker-upload-uuid` and `oci-chunk-max-length` headers
   - Compute effective chunk size: `min(clientChunkSize, registryMax)` (use registry max if client didn't set one)
   - `PATCH` loop: send chunks with `Content-Range` header, follow `Location` header for next URL
   - `PUT` to finalize with `?digest=` parameter
-- [ ] Wrap reader with counting writer that updates `mpb` progress bar
-- [ ] Implement retry logic: up to 3 attempts with exponential backoff (1s, 2s, 4s) on 5xx/network errors, immediate fail on 4xx
-- [ ] Write tests using `httptest.Server` simulating the full upload flow (HEAD -> POST -> PATCH -> PUT)
-- [ ] Write tests for retry on 5xx, immediate fail on 4xx, skip on existing blob
-- [ ] Run tests - must pass before next task
+- [x] Wrap reader with counting writer that updates `mpb` progress bar
+- [x] Implement retry logic: up to 3 attempts with exponential backoff (1s, 2s, 4s) on 5xx/network errors, immediate fail on 4xx
+- [x] Write tests using `httptest.Server` simulating the full upload flow (HEAD -> POST -> PATCH -> PUT)
+- [x] Write tests for retry on 5xx, immediate fail on 4xx, skip on existing blob
+- [x] Run tests - must pass before next task
 
 ### Task 8: Push orchestration with progress bars
 
