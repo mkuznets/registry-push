@@ -302,6 +302,7 @@ func doWithRetry(ctx context.Context, client *http.Client, makeReq func() (*http
 		}
 
 		if resp.StatusCode >= 500 {
+			_, _ = io.Copy(io.Discard, resp.Body)
 			_ = resp.Body.Close()
 			lastErr = fmt.Errorf("server error: HTTP %d", resp.StatusCode)
 			continue
