@@ -1,4 +1,5 @@
 bin/
+registry-push
 
 # ralphex progress logs
 .ralphex/progress/

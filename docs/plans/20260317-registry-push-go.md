@@ -134,13 +134,13 @@
 - Modify: `main.go`
 - Modify: `upload.go`
 
-- [ ] Wire everything together in `main()`: resolve source -> process layers -> push concurrently -> push manifest
-- [ ] Set up `mpb.Progress` container with per-layer bars showing: short digest, progress percentage, bytes transferred/total, speed
-- [ ] Use `errgroup.Group` with `SetLimit(concurrency)` for parallel layer+config uploads
-- [ ] Build OCI manifest after all layers uploaded (schema version 2, `application/vnd.oci.image.manifest.v1+json`)
-- [ ] `PUT` manifest to `/v2/<repo>/manifests/<tag>`
-- [ ] Test full push flow end-to-end with `httptest.Server` (at least one integration-style test)
-- [ ] Run tests - must pass before next task
+- [x] Wire everything together in `main()`: resolve source -> process layers -> push concurrently -> push manifest
+- [x] Set up `mpb.Progress` container with per-layer bars showing: short digest, progress percentage, bytes transferred/total, speed
+- [x] Use `errgroup.Group` with `SetLimit(concurrency)` for parallel layer+config uploads
+- [x] Build OCI manifest after all layers uploaded (schema version 2, `application/vnd.oci.image.manifest.v1+json`)
+- [x] `PUT` manifest to `/v2/<repo>/manifests/<tag>`
+- [x] Test full push flow end-to-end with `httptest.Server` (at least one integration-style test)
+- [x] Run tests - must pass before next task
 
 ### Task 9: Verify acceptance criteria
 

@@ -1,11 +1,19 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	goflags "github.com/jessevdk/go-flags"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
+	"golang.org/x/sync/errgroup"
 )
 
 type Options struct {
@@ -98,14 +106,201 @@ func run() error {
 		proto = "http"
 	}
 
-	fmt.Printf("Source:      %s\n", opts.Args.Source)
-	fmt.Printf("Destination: %s://%s/%s:%s\n", proto, dest.Host, dest.Repository, dest.Tag)
-	fmt.Printf("Chunk size:  %d\n", opts.ChunkSize)
-	fmt.Printf("Concurrency: %d\n", opts.Concurrency)
-	fmt.Printf("Gzip level:  %d\n", opts.GzipLevel)
-	fmt.Printf("Recompress:  %t\n", opts.Recompress)
+	return pushImage(context.Background(), &opts, dest, proto)
+}
 
+func pushImage(ctx context.Context, opts *Options, dest Destination, proto string) error {
+	fmt.Printf("Resolving source: %s\n", opts.Args.Source)
+	img, err := ResolveSource(opts.Args.Source)
+	if err != nil {
+		return fmt.Errorf("resolving source: %w", err)
+	}
+
+	img, err = ProcessImage(img, opts.Recompress, opts.GzipLevel)
+	if err != nil {
+		return fmt.Errorf("processing image: %w", err)
+	}
+
+	return pushImageWithSource(ctx, opts, dest, proto, img)
+}
+
+func pushImageWithSource(ctx context.Context, opts *Options, dest Destination, proto string, img v1.Image) error {
+	baseURL := fmt.Sprintf("%s://%s/v2/%s", proto, dest.Host, dest.Repository)
+	cred := Credentials{Username: opts.Username, Password: opts.Password}
+	client := &http.Client{}
+
+	layers, err := img.Layers()
+	if err != nil {
+		return fmt.Errorf("getting layers: %w", err)
+	}
+
+	progress := mpb.New(mpb.WithWidth(60))
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(opts.Concurrency)
+
+	for _, layer := range layers {
+		layer := layer
+		g.Go(func() error {
+			return pushSingleLayer(gctx, client, baseURL, cred, layer, int64(opts.ChunkSize), progress)
+		})
+	}
+
+	g.Go(func() error {
+		return pushConfigBlob(gctx, client, baseURL, cred, img, progress)
+	})
+
+	if err := g.Wait(); err != nil {
+		progress.Wait()
+		return err
+	}
+
+	progress.Wait()
+
+	manifest, manifestMediaType, err := buildManifest(img)
+	if err != nil {
+		return fmt.Errorf("building manifest: %w", err)
+	}
+
+	fmt.Printf("Pushing manifest to %s:%s\n", dest.Repository, dest.Tag)
+	if err := pushManifest(ctx, client, baseURL, cred, dest.Tag, manifest, manifestMediaType); err != nil {
+		return err
+	}
+
+	fmt.Println("Push complete")
 	return nil
+}
+
+func pushSingleLayer(ctx context.Context, client *http.Client, baseURL string, cred Credentials, layer v1.Layer, chunkSize int64, progress *mpb.Progress) error {
+	digest, err := layer.Digest()
+	if err != nil {
+		return fmt.Errorf("getting layer digest: %w", err)
+	}
+
+	size, err := layer.Size()
+	if err != nil {
+		return fmt.Errorf("getting layer size: %w", err)
+	}
+
+	shortDigest := digest.Hex
+	if len(shortDigest) > 12 {
+		shortDigest = shortDigest[:12]
+	}
+
+	bar := progress.AddBar(size,
+		mpb.PrependDecorators(
+			decor.Name(shortDigest+" "),
+			decor.CountersKibiByte("% .2f / % .2f"),
+		),
+		mpb.AppendDecorators(
+			decor.EwmaSpeed(decor.SizeB1024(0), "% .2f", 30),
+			decor.Name(" "),
+			decor.Percentage(),
+		),
+	)
+
+	rc, err := layer.Compressed()
+	if err != nil {
+		return fmt.Errorf("reading compressed layer: %w", err)
+	}
+	defer func() { _ = rc.Close() }()
+
+	return pushLayer(ctx, client, baseURL, cred, digest, rc, size, chunkSize, bar)
+}
+
+func pushConfigBlob(ctx context.Context, client *http.Client, baseURL string, cred Credentials, img v1.Image, progress *mpb.Progress) error {
+	configRaw, err := img.RawConfigFile()
+	if err != nil {
+		return fmt.Errorf("getting config: %w", err)
+	}
+
+	configDigest, configSize, err := v1.SHA256(strings.NewReader(string(configRaw)))
+	if err != nil {
+		return fmt.Errorf("computing config digest: %w", err)
+	}
+
+	bar := progress.AddBar(configSize,
+		mpb.PrependDecorators(
+			decor.Name("config       "),
+			decor.CountersKibiByte("% .2f / % .2f"),
+		),
+		mpb.AppendDecorators(
+			decor.Percentage(),
+		),
+	)
+
+	return pushLayer(ctx, client, baseURL, cred, configDigest, strings.NewReader(string(configRaw)), configSize, 0, bar)
+}
+
+type ociManifest struct {
+	SchemaVersion int             `json:"schemaVersion"`
+	MediaType     string          `json:"mediaType"`
+	Config        ociDescriptor   `json:"config"`
+	Layers        []ociDescriptor `json:"layers"`
+}
+
+type ociDescriptor struct {
+	MediaType string `json:"mediaType"`
+	Digest    string `json:"digest"`
+	Size      int64  `json:"size"`
+}
+
+func buildManifest(img v1.Image) (data []byte, mediaType string, _ error) {
+	configRaw, err := img.RawConfigFile()
+	if err != nil {
+		return nil, "", fmt.Errorf("getting config: %w", err)
+	}
+
+	configDigest, configSize, err := v1.SHA256(strings.NewReader(string(configRaw)))
+	if err != nil {
+		return nil, "", fmt.Errorf("computing config digest: %w", err)
+	}
+
+	layers, err := img.Layers()
+	if err != nil {
+		return nil, "", fmt.Errorf("getting layers: %w", err)
+	}
+
+	layerDescs := make([]ociDescriptor, 0, len(layers))
+	for _, layer := range layers {
+		digest, dErr := layer.Digest()
+		if dErr != nil {
+			return nil, "", fmt.Errorf("getting layer digest: %w", dErr)
+		}
+		size, sErr := layer.Size()
+		if sErr != nil {
+			return nil, "", fmt.Errorf("getting layer size: %w", sErr)
+		}
+		mt, mtErr := layer.MediaType()
+		if mtErr != nil {
+			return nil, "", fmt.Errorf("getting layer media type: %w", mtErr)
+		}
+		layerDescs = append(layerDescs, ociDescriptor{
+			MediaType: string(mt),
+			Digest:    digest.String(),
+			Size:      size,
+		})
+	}
+
+	mediaType = string(types.OCIManifestSchema1)
+	m := ociManifest{
+		SchemaVersion: 2,
+		MediaType:     mediaType,
+		Config: ociDescriptor{
+			MediaType: string(types.OCIConfigJSON),
+			Digest:    configDigest.String(),
+			Size:      configSize,
+		},
+		Layers: layerDescs,
+	}
+
+	var marshalErr error
+	data, marshalErr = json.Marshal(m)
+	if marshalErr != nil {
+		return nil, "", fmt.Errorf("marshaling manifest: %w", marshalErr)
+	}
+
+	return data, mediaType, nil
 }
 
 func main() {

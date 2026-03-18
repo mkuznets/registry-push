@@ -49,7 +49,7 @@ func pushLayer(
 	content io.Reader,
 	totalSize int64,
 	chunkSize int64,
-	bar *mpb.Bar, //nolint:unparam // bar will be non-nil in orchestration task
+	bar *mpb.Bar,
 ) error {
 	exists, err := blobExists(ctx, client, baseURL, cred, digest)
 	if err != nil {
@@ -193,6 +193,31 @@ func finalizeUpload(ctx context.Context, client *http.Client, uploadURL string, 
 
 	if resp.StatusCode != http.StatusCreated {
 		return fmt.Errorf("unexpected status %d from upload finalization", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func pushManifest(ctx context.Context, client *http.Client, baseURL string, cred Credentials, tag string, manifestBytes []byte, mediaType string) error {
+	manifestURL := fmt.Sprintf("%s/manifests/%s", baseURL, tag)
+
+	resp, err := doWithRetry(ctx, client, func() (*http.Request, error) {
+		req, reqErr := newAuthenticatedRequest(ctx, http.MethodPut, manifestURL, bytes.NewReader(manifestBytes), cred)
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		req.Header.Set("Content-Type", mediaType)
+		req.ContentLength = int64(len(manifestBytes))
+		return req, nil
+	})
+	if err != nil {
+		return fmt.Errorf("pushing manifest: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return fmt.Errorf("unexpected status %d pushing manifest: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
