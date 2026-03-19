@@ -70,19 +70,6 @@ func ProcessImage(img v1.Image, gzipLevel int, progress *mpb.Progress) (v1.Image
 	return result, nil
 }
 
-func formatBytes(b int64) string {
-	switch {
-	case b >= 1<<30:
-		return fmt.Sprintf("%.2f GiB", float64(b)/float64(1<<30))
-	case b >= 1<<20:
-		return fmt.Sprintf("%.2f MiB", float64(b)/float64(1<<20))
-	case b >= 1<<10:
-		return fmt.Sprintf("%.2f KiB", float64(b)/float64(1<<10))
-	default:
-		return fmt.Sprintf("%d B", b)
-	}
-}
-
 type recompressedLayer struct {
 	original  v1.Layer
 	gzipLevel int

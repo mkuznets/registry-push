@@ -26,7 +26,7 @@ import (
 type Options struct {
 	ChunkSize   int    `long:"chunk-size" description:"Max chunk size in bytes (0 = use registry default)" default:"0"`
 	Concurrency int    `long:"concurrency" description:"Parallel layer operations" default:"5"`
-	GzipLevel int `long:"gzip-level" description:"Gzip compression level 1-9 for layers" default:"6"`
+	GzipLevel   int    `long:"gzip-level" description:"Gzip compression level 1-9 for layers" default:"6"`
 	Insecure    bool   `long:"insecure" description:"Use plain HTTP"`
 	Username    string `long:"username" env:"REGISTRY_USERNAME" required:"true" description:"Registry username"`
 	Password    string `long:"password" env:"REGISTRY_PASSWORD" required:"true" description:"Registry password"`
