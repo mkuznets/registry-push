@@ -40,7 +40,7 @@ registry-push [OPTIONS] <source> <destination>
 
 ### Source formats
 
-Images are always resolved locally — either from the Docker daemon or an OCI layout directory on disk.
+Images are always resolved locally, either from the Docker daemon or an OCI layout directory on disk.
 
 | Input                          | Source               |
 |--------------------------------|----------------------|
@@ -49,7 +49,8 @@ Images are always resolved locally — either from the Docker daemon or an OCI l
 | `ghcr.io/org/repo:tag`         | Docker daemon        |
 | `oci:./my-layout`              | OCI layout directory |
 
-The `oci:` prefix selects an OCI layout directory. Everything else is resolved from the local Docker daemon.
+The `oci:` prefix selects an OCI layout directory. Everything else, including registry-style names like
+`ghcr.io/org/repo:tag`, is resolved from the local Docker daemon.
 
 ### Destination format
 
@@ -73,17 +74,13 @@ Push from an OCI layout directory:
 registry-push --username user --password pass oci:./my-layout registry.example.com/repo/myimage:v1
 ```
 
-Custom gzip level (default is 9):
+Custom gzip level (default is 6):
 
 ```
 registry-push --gzip-level 6 --username user --password pass myimage:latest registry.example.com/repo/myimage:v1
 ```
 
-Skip recompression (use original layer compression):
-
-```
-registry-push --no-recompress --username user --password pass myimage:latest registry.example.com/repo/myimage:v1
-```
+Layers are always recompressed before upload using the configured gzip level.
 
 ## Configuration
 
@@ -93,7 +90,7 @@ registry-push --no-recompress --username user --password pass myimage:latest reg
 |-----------------|------------|-----------------------------------------------------------------------------------------------|
 | `--chunk-size`  | `0`        | Max chunk size in bytes. `0` means use the registry's advertised maximum (or 50 MB fallback). |
 | `--concurrency` | `5`        | Number of parallel layer uploads.                                                             |
-| `--gzip-level`  | `9`        | Gzip compression level (1-9) for layers.                                                      |
+| `--gzip-level`  | `6`        | Gzip compression level (1-9) for layers.                                                      |
 | `--insecure`    | `false`    | Use plain HTTP instead of HTTPS.                                                              |
 | `--username`    | (required) | Registry username.                                                                            |
 | `--password`    | (required) | Registry password.                                                                            |
@@ -106,6 +103,8 @@ registry-push --no-recompress --username user --password pass myimage:latest reg
 | `REGISTRY_PASSWORD` | `--password`    |
 
 ## How it works
+
+Before upload, image layers are recompressed with the configured gzip level.
 
 For each layer in the image:
 
